@@ -34,6 +34,7 @@
 
 @property(nonatomic,getter=isStop1)BOOL fristStopTime;
 @property(nonatomic,getter=isStop12)BOOL isStop;
+//@property(assign) BOOL isHasData;
 
 
 @property(nonatomic,strong)NSMutableDictionary*timeDic;
@@ -59,6 +60,9 @@
     if (!_playerController) {
            NSURL *Url = [NSURL URLWithString:@"http://flv2.bn.netease.com/videolib3/1511/26/Wuimb0091/SD/Wuimb0091-mobile.mp4"];
         _playerController = [[MPMoviePlayerController alloc]initWithContentURL:Url];
+        
+        
+       
     }
     return _playerController;
     
@@ -109,7 +113,15 @@
         make.size.mas_equalTo(CGSizeMake(100, 50));
     }];
     
-
+  
+    
+    
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveData) name:UIApplicationWillTerminateNotification object:nil];
+    
+//    NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+//    NSString *plistPath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
+//    
+//    NSLog(@"path%@",plistPath);
     
 }
 //添加监听
@@ -119,24 +131,54 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mediaplaybackFinnished:) name:MPMoviePlayerPlaybackDidFinishNotification object:self.playerController];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(lookVideoTime) name:MPMovieDurationAvailableNotification object:self.playerController];
+    
+    //进入后台执行
+    
+
+    
+
+    
+    
+    
 }
+
+//转换
 - (NSNumber *)formFloat:(CGFloat)float1{
     
     NSNumber *num = [NSNumber numberWithFloat:float1];
     return num;
 }
 
+//只执行一次方法
+- (void)oneExercise{
+    
+    __weak PlayerController2 *myself = self;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        [myself loadingData];
+        
+    });
+}
+
+
+
 - (void)mediaPlaybackStateChange:(NSNotification *)notifacation{
     
     
-    
+//    
+//    NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+//    NSString *plistPath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
+//    NSMutableDictionary *mytime = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
+//    NSNumber *playtime = [mytime valueForKey:@"currentTime"];
+
 
     
     switch (self.playerController.playbackState) {
         case MPMoviePlaybackStatePlaying:
             NSLog(@"");
-           
-            
+
+            //保证整个程序只执行一次
+            [self oneExercise];
             
             NSTimeInterval current = self.playerController.currentPlaybackTime;
             NSLog(@"正在播放%.0fs",current);
@@ -243,7 +285,7 @@
 
 - (void)mediaplaybackFinnished:(NSNotification *)notification{
     NSLog(@"完成播放");
-    
+   
     NSLog(@"我总看的时间是%.0fs",self.totallTime4 + self.totalTime2);
     
     NSLog(@"%.0fs",self.playerController.playableDuration);
@@ -256,7 +298,12 @@
 
 - (void)looklook{
     
-  
+    [self saveData];
+    NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *plistPath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
+    
+    NSLog(@"我保存到的路径是%@",plistPath);
+    
 
     
 }
@@ -268,11 +315,7 @@
     [self.playerController.view mas_makeConstraints:^(MASConstraintMaker *make) {
         make.edges.mas_equalTo(self.button);
     }];
-    
-
     [self.playerController play];
-    
-    
     [self addNotification];
     
     
@@ -297,18 +340,72 @@
         self.tatolDuration = [[NSMutableSet alloc]init];
         [self.tatolDuration addObject:[NSNumber numberWithInt:i]];
         NSLog(@"i=%@",self.tatolDuration);
+        
+        
+        
        
         
         
     }
+   
 }
 
 
 
 
+
+    
+
+//保存数据
+- (void)saveData{
+    
+    CGFloat currentTime = self.playerController.currentPlaybackTime;
+ 
+    NSNumber *currentTime2 = [self formFloat:currentTime];
+    NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *plistPath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
+    NSMutableDictionary * dic = [NSMutableDictionary dictionary];
+    [dic setValue:currentTime2 forKey:@"currentTime"];
+    [dic writeToFile:plistPath atomically:YES];
     
     
-        
+    NSLog(@"数据已保存");
+    
+}
+
+//加载退出前的数据
+
+- (void)loadingData{
+    
+    
+   
+    NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *plistPath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
+    NSMutableDictionary *mytime = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
+    NSNumber *playtime = [mytime valueForKey:@"currentTime"];
+    CGFloat  playtime2 = playtime.floatValue;
+     [self.playerController setCurrentPlaybackTime:playtime2];
+ 
+    
+    
+}
+
+//播放前进行判断
+
+
+
+
+
+-(void)dealloc{
+    
+    
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:MPMoviePlayerPlaybackStateDidChangeNotification object:self.playerController];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:MPMoviePlayerPlaybackDidFinishNotification object:self.playerController];
+    
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidEnterBackgroundNotification object:self.playerController];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidBecomeActiveNotification object:self.playerController];
+    
+}
         
 //        self.playStopTime2 = self.playStopTime;
 //        
