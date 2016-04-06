@@ -15,20 +15,29 @@
 
 @interface PlayerController2 ()
 
-@property(nonatomic,strong)UIButton *button;
-@property(nonatomic,strong)MPMoviePlayerController *playerController;
+@property (nonatomic,strong)UIButton *button;
+@property (nonatomic,strong)MPMoviePlayerController *playerController;
+@property (nonatomic,assign)CGFloat playStartTime;
+@property (nonatomic,assign)CGFloat playStopTime;
+@property (nonatomic,assign)CGFloat playStopTime2;
+@property (nonatomic,assign)CGFloat totalTime;
+@property (nonatomic,assign)CGFloat totalTime2;
+@property (nonatomic,assign)CGFloat totalTime1;
+@property (nonatomic,assign)CGFloat totallTime3;
+@property (nonatomic,assign)CGFloat totallTime4;
+@property (nonatomic,assign)CGFloat forwardTime;
+@property (nonatomic,assign)CGFloat backTime;
 
-@property(nonatomic,assign)CGFloat playStartTime;
-@property(nonatomic,assign)CGFloat playStopTime;
-@property(nonatomic,assign)CGFloat playStopTime2;
-@property(nonatomic,assign)CGFloat totalTime;
-@property(nonatomic,assign)CGFloat totalTime2;
-@property(nonatomic,assign)CGFloat totalTime1;
-@property(nonatomic,assign)CGFloat totallTime3;
-@property(nonatomic,assign)CGFloat totallTime4;
-@property(nonatomic,assign)CGFloat forwardTime;
-@property(nonatomic,assign)CGFloat backTime;
-@property(nonatomic,assign)NSInteger index;
+
+//
+@property (nonatomic,assign) CGFloat loadingTime;
+@property (nonatomic,assign)NSInteger index;
+
+//一个路径记录播放结束后的时间点
+@property (nonatomic,copy) NSString *endTimePath;
+
+//是否要定位播放的开关
+@property (nonatomic,assign) BOOL isPosition;
 
 
 
@@ -41,10 +50,8 @@
 
 //数组保存播放过的点
 @property(nonatomic,strong)NSMutableArray *playedArr;
-
 @property(nonatomic,strong)NSMutableArray *playingArr;
 
-//
 
 @property(nonatomic,strong)NSMutableSet *tatolDuration;
 @property(nonatomic,strong)NSMutableSet *tatolDuration2;
@@ -58,23 +65,23 @@
 
 -(MPMoviePlayerController *)playerController{
     if (!_playerController) {
-           NSURL *Url = [NSURL URLWithString:@"http://flv2.bn.netease.com/videolib3/1511/26/Wuimb0091/SD/Wuimb0091-mobile.mp4"];
+        NSURL *Url = [NSURL URLWithString:@"http://flv2.bn.netease.com/videolib3/1511/26/Wuimb0091/SD/Wuimb0091-mobile.mp4"];
+
         _playerController = [[MPMoviePlayerController alloc]initWithContentURL:Url];
-        
-        
-       
-    }
+
+            }
     return _playerController;
     
 }
 
 
+
+//点击视频播放的按钮
+
 - (UIButton *)button{
     if (!_button) {
         _button = [UIButton buttonWithType:UIButtonTypeCustom];
         [self.button setTitle:@"播放视频" forState:0];
-        
-        
         [self.button setTintColor:[UIColor redColor]];
         self.button.backgroundColor = [UIColor grayColor];
         [self.button addTarget:self action:@selector(gotoplay:) forControlEvents:UIControlEventTouchUpInside];
@@ -82,13 +89,31 @@
     return _button;
 }
 
+
+
+
+- (NSString *)endTimePath{
+    
+    if (!_endTimePath) {
+        NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+        _endTimePath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
+
+    }
+    
+    return _endTimePath;
+    
+    
+}
+
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    self.tatolDuration2 = [NSMutableSet set];
     self.isStop = YES;
+    self.isPosition = YES;
     
     self.view.backgroundColor = [UIColor whiteColor];
-    
     [self.view addSubview:self.button];
     
     [self.button mas_makeConstraints:^(MASConstraintMaker *make) {
@@ -113,31 +138,22 @@
         make.size.mas_equalTo(CGSizeMake(100, 50));
     }];
     
-  
     
+    //崩溃时调用的方法
     
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveData) name:UIApplicationWillTerminateNotification object:nil];
-    
-//    NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-//    NSString *plistPath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
-//    
-//    NSLog(@"path%@",plistPath);
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveData) name:UIApplicationWillTerminateNotification object:nil];
     
 }
+
+
 //添加监听
 - (void)addNotification{
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mediaPlaybackStateChange:) name:MPMoviePlayerPlaybackStateDidChangeNotification object:self.playerController];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mediaPlaybackStateChange2:) name:MPMoviePlayerPlaybackStateDidChangeNotification object:self.playerController];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mediaplaybackFinnished:) name:MPMoviePlayerPlaybackDidFinishNotification object:self.playerController];
     
+    
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(lookVideoTime) name:MPMovieDurationAvailableNotification object:self.playerController];
-    
-    //进入后台执行
-    
-
-    
-
-    
     
     
 }
@@ -151,144 +167,128 @@
 
 //只执行一次方法
 - (void)oneExercise{
-    
     __weak PlayerController2 *myself = self;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        [myself loadingData];
+        NSMutableDictionary *mytime = [NSMutableDictionary dictionaryWithContentsOfFile:myself.endTimePath];
+        NSNumber *playtime = [mytime valueForKey:@"currentTime"];
+        CGFloat  playtime2 = playtime.floatValue;
+        [myself.playerController initialPlaybackTime];
+        [myself.playerController setCurrentPlaybackTime:playtime2];
+        NSLog(@"只执行一次");
         
     });
+    
+}
+//调到指定的时间
+- (void)gotoDataTime{
+    NSMutableDictionary *mytime = [NSMutableDictionary dictionaryWithContentsOfFile:self.endTimePath];
+    NSNumber *playtime = [mytime valueForKey:@"currentTime"];
+    CGFloat  playtime2 = playtime.floatValue;
+    [self.playerController setCurrentPlaybackTime:playtime2];
+
 }
 
 
-
-- (void)mediaPlaybackStateChange:(NSNotification *)notifacation{
+- (void)mediaPlaybackStateChange2:(NSNotification *)notifacation{
     
-    
-//    
-//    NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-//    NSString *plistPath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
-//    NSMutableDictionary *mytime = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
-//    NSNumber *playtime = [mytime valueForKey:@"currentTime"];
-
-
-    
-    switch (self.playerController.playbackState) {
-        case MPMoviePlaybackStatePlaying:
-            NSLog(@"");
-
-            //保证整个程序只执行一次
-            [self oneExercise];
-            
-            NSTimeInterval current = self.playerController.currentPlaybackTime;
-            NSLog(@"正在播放%.0fs",current);
-            self.playStartTime = current;
-            //一播放就开始记录起点
-           // self.playedArr = [NSMutableArray arrayWithObject:[self formFloat:self.playStartTime]];
-            
-            if (self.fristStopTime == NO) {
-                
-                self.playStartTime = self.playerController.currentPlaybackTime;
-                self.fristStopTime = YES;
-
-            }
-            
-            self.isStop = YES;
-            
-                        
-            break;
-            
-        case MPMoviePlaybackStatePaused:
-         
-            NSLog(@"");
-            
-           
-            NSTimeInterval current2 = self.playerController.currentPlaybackTime;
-            NSLog(@"暂停的时间是%.0fs",current2);
-             self.playingArr = [NSMutableArray arrayWithObject:[self formFloat:current2]];
-            if (self.isStop == YES) {
-                self.totallTime3 = current2 - self.playStartTime;
-                self.totallTime4 += self.totallTime3;
-                NSLog(@"暂停的时候我看的播放的时间%.0fs",self.totallTime4);
-                self.isStop = NO;
-                
-                //把播放过的点放进播放过的集合中去
-                
-                for (int i = (int)self.playStartTime; i <= (int)(current2); i++) {
-                    self.tatolDuration2 = [[NSMutableSet alloc]init];
-                    [self.tatolDuration2 addObject:[NSNumber numberWithInt:i]];
-                   // NSLog(@"i=%@",self.tatolDuration2);
-                    
-                }
-                
-                
-            }
+    if (self.playerController.playbackState == MPMoviePlaybackStatePlaying) {
         
+        
+        
+        //记录时间
+        NSTimeInterval current = self.playerController.currentPlaybackTime;
+        NSLog(@"正在播放%.0fs",current);
+        self.playStartTime = current;
+        //一播放就开始记录起点
+        // self.playedArr = [NSMutableArray arrayWithObject:[self formFloat:self.playStartTime]];
+        if (self.fristStopTime == NO) {
+            self.playStartTime = self.playerController.currentPlaybackTime;
+            self.fristStopTime = YES;
             
-            self.playStopTime = current2;
-            break;
+        }
+        
+        self.isStop = YES;
+
+    }
+
+    
+    
+    
+//停止时执行
+    if (self.playerController.playbackState == MPMoviePlaybackStateStopped) {
+        
+    }
+
+    
+ //暂停时执行
+    if (self.playerController.playbackState == MPMoviePlaybackStatePaused) {
+        
+       
+        
+        NSTimeInterval current2 = self.playerController.currentPlaybackTime;
+        NSLog(@"暂停的时间是%.0fs",current2);
+        self.playingArr = [NSMutableArray arrayWithObject:[self formFloat:current2]];
+        if (self.isStop == YES) {
+            self.totallTime3 = current2 - self.playStartTime;
+            self.totallTime4 += self.totallTime3;
+            NSLog(@"暂停的时候我看的播放的时间%.0fs",self.totallTime4);
+            self.isStop = NO;
             
-            case MPMoviePlaybackStateStopped:
-            NSLog(@"停止播放");
-          
-            break;
+            //把播放过的点放进播放过的集合中去
             
-            case MPMoviePlaybackStateSeekingForward:
-            NSLog(@"");
-            
-            //暂停加拖动的情况
-         
-            if (_isStop == NO) {
-                self.totalTime2 = 0.0;
-            }else{
+            for (int i = (int)self.playStartTime; i <= (int)(current2); i++) {
+               
+                [self.tatolDuration2 addObject:[NSNumber numberWithInt:i]];
+                // NSLog(@"i=%@",self.tatolDuration2);
                 
+            }
+        }
+        self.playStopTime = current2;
+    }
+    
+    
+    //定位时执行
+    if (self.playerController.playbackState == MPMoviePlaybackStateSeekingForward) {
+        
+        
+        if (_isStop == NO) {
+            self.totalTime2 = 0.0;
+        }else{
+            
             NSTimeInterval current3 = self.playerController.currentPlaybackTime;
             NSLog(@"拖动前的时间是%.0fs",current3);
             self.forwardTime = current3;
-                
-            self.playingArr = [NSMutableArray arrayWithObject:[self formFloat:current]];
+            self.playingArr = [NSMutableArray arrayWithObject:[self formFloat:current3]];
             self.totalTime1 = self.forwardTime - self.playStartTime;
             self.totalTime2 += self.totalTime1;
             
             NSLog(@"我看的时间是%.0fs",self.totalTime2);
             self.fristStopTime = NO;
+            
+            for (int i = (int)(self.playStartTime); i <= (int)(self.forwardTime); i++) {
                 
-                for (int i = (int)(self.forwardTime); i <= (int)(self.forwardTime); i++) {
-                    
-                    self.tatolDuration2 = [[NSMutableSet alloc]init];
-                    [self.tatolDuration2 addObject:[NSNumber numberWithInt:i]];
-                   // NSLog(@"i=%@",self.tatolDuration2);
-                    
-                }
-
+             
+                [self.tatolDuration2 addObject:[NSNumber numberWithInt:i]];
                 
-                
-             }
-            
-            break;
-            
-            case MPMoviePlaybackStateSeekingBackward:
-            NSLog(@"");
-            NSTimeInterval current4 = self.playerController.currentPlaybackTime;
-            NSLog(@"向后定位的时间是%.0fs",current4);
-            
-           break;
-            
-        default:
-            break;
+            }
     }
     
-  
-
+}
 }
 
 
 - (void)mediaplaybackFinnished:(NSNotification *)notification{
     NSLog(@"完成播放");
-   
     NSLog(@"我总看的时间是%.0fs",self.totallTime4 + self.totalTime2);
+   // NSLog(@"集合的个数是%ld",self.tatolDuration2.count);
     
-    NSLog(@"%.0fs",self.playerController.playableDuration);
+    if (self.tatolDuration2.count >= 57 ) {
+        NSLog(@"视频已经看完了");
+    }else{
+        NSLog(@"视频没有看完");
+    }
+    
 }
 
 - (void)didReceiveMemoryWarning {
@@ -298,13 +298,17 @@
 
 - (void)looklook{
     
-    [self saveData];
+    //[self saveData];
     NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
     NSString *plistPath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
     
     NSLog(@"我保存到的路径是%@",plistPath);
     
-
+      //  [self oneExercise];
+    
+      NSLog(@"集合里面的数是%ld",self.tatolDuration2.count);
+    
+    
     
 }
 
@@ -316,14 +320,18 @@
         make.edges.mas_equalTo(self.button);
     }];
     [self.playerController play];
+   
+
     [self addNotification];
     
+
     
-//视频一播放就获取视频的总的长度并把视频分成一个个点来记录
+    
+    //视频一播放就获取视频的总的长度并把视频分成一个个点来记录
     
     // self.playerController.playableDuration
-   
-  //  NSLog(@"abc%.0fs",self.playerController.duration);
+    
+    //  NSLog(@"abc%.0fs",self.playerController.duration);
     
     
     
@@ -333,40 +341,36 @@
 }
 
 - (void)lookVideoTime{
-    
+
     NSLog(@"视频长度我可以看看吗%.0fs",self.playerController.duration);
     for (int i = 0; i <= (int)(self.playerController.duration); i++) {
         
         self.tatolDuration = [[NSMutableSet alloc]init];
         [self.tatolDuration addObject:[NSNumber numberWithInt:i]];
         NSLog(@"i=%@",self.tatolDuration);
-        
-        
-        
-       
-        
+    
         
     }
-   
+    
 }
 
 
 
 
 
-    
+
 
 //保存数据
 - (void)saveData{
     
     CGFloat currentTime = self.playerController.currentPlaybackTime;
- 
     NSNumber *currentTime2 = [self formFloat:currentTime];
-    NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-    NSString *plistPath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
     NSMutableDictionary * dic = [NSMutableDictionary dictionary];
     [dic setValue:currentTime2 forKey:@"currentTime"];
-    [dic writeToFile:plistPath atomically:YES];
+    [dic writeToFile:self.endTimePath atomically:YES];
+    
+    
+    
     
     
     NSLog(@"数据已保存");
@@ -376,21 +380,16 @@
 //加载退出前的数据
 
 - (void)loadingData{
-    
-    
-   
-    NSString *docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-    NSString *plistPath = [docPath stringByAppendingPathComponent:@"playTime.plist"];
-    NSMutableDictionary *mytime = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
+
+    NSMutableDictionary *mytime = [NSMutableDictionary dictionaryWithContentsOfFile:self.endTimePath];
     NSNumber *playtime = [mytime valueForKey:@"currentTime"];
     CGFloat  playtime2 = playtime.floatValue;
-     [self.playerController setCurrentPlaybackTime:playtime2];
- 
-    
+    [self.playerController setCurrentPlaybackTime:playtime2];
+
     
 }
 
-//播放前进行判断
+
 
 
 
@@ -406,32 +405,16 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidBecomeActiveNotification object:self.playerController];
     
 }
-        
-//        self.playStopTime2 = self.playStopTime;
-//        
-//        //拖动向前时
-//        self.totalTime1 = fabs(self.playStopTime - self.forwardTime);
-//        //暂停播放时
-//        self.totalTime = fabs(self.playStopTime - self.totalTime1);
-//        
-//        self.totalTime2 += self.totalTime1;
-//        self.totallTime3 += self.totalTime;
-//        
-//        NSLog(@"我看的时间是%.2fs",self.totallTime3);
-    
-
-    
-    
 
 
 /*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
-}
-*/
+ #pragma mark - Navigation
+ 
+ // In a storyboard-based application, you will often want to do a little preparation before navigation
+ - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+ // Get the new view controller using [segue destinationViewController].
+ // Pass the selected object to the new view controller.
+ }
+ */
 
 @end

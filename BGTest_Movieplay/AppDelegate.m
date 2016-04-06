@@ -9,6 +9,7 @@
 #import "AppDelegate.h"
 #import "ViewController.h"
 #import "PlayerController2.h"
+#import "PlayerController.h"
 
 @interface AppDelegate ()
 
@@ -21,7 +22,7 @@
 
     self.window = [[UIWindow alloc]initWithFrame:[UIScreen mainScreen].bounds];
     
-    UINavigationController *navc = [[UINavigationController alloc]initWithRootViewController:[PlayerController2 new]];
+    UINavigationController *navc = [[UINavigationController alloc]initWithRootViewController:[PlayerController new]];
     self.window.rootViewController = navc;
     [self.window makeKeyAndVisible];
     

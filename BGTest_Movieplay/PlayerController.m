@@ -22,7 +22,10 @@
 @property(nonatomic,assign)CGFloat currentPlayTime;
 @property(nonatomic,assign)CGFloat nextPlayTime;
 @property(nonatomic,assign)CGFloat AllTime;
+@property(nonatomic,assign)CGFloat AllTime2;
 @property(nonatomic,strong)NSMutableDictionary *timeDic;
+
+@property (nonatomic,assign) BOOL isOpenRecord;
 
 //判断是否进行播放状态
 @property(nonatomic,getter=playing)BOOL playStatus;
@@ -126,8 +129,8 @@
 
     
     
-    
 
+  
     
 
 }
@@ -137,10 +140,7 @@
 
     
     
-    self.AllTime = fabs(self.currentPlayTime - self.nextPlayTime);
-    NSLog(@"我拖动的时间是%.2fs",_AllTime);
-    
-    NSLog(@"aaaa暂停的时间是%.2fs",_currentPlayTime);
+    NSLog(@"看的时间是%.2fs",self.AllTime2);
     
     
     
@@ -159,7 +159,10 @@
     
     [self.player play];
     
-    [self addobserTOPlayItem:self.player.currentItem];
+ 
+    self.isOpenRecord = YES;
+//    CMTime time1 = CMTimeMake(17, 1);
+//    [self.player seekToTime:time1];
     
     
    
@@ -212,27 +215,25 @@
     [[PlayerController sharedInstance].player addPeriodicTimeObserverForInterval:CMTimeMake(1.0, 1.0) queue:dispatch_get_main_queue() usingBlock:^(CMTime time) {
         
 
-        
-        if (self.player.rate == 0) {
-        
+        if (self.isOpenRecord == NO && self.player.rate == 1) {
             self.currentPlayTime = CMTimeGetSeconds(time);
-            NSLog(@"正在暂停的时间是%.2fs",self.currentPlayTime);
-            
-            
-            
-        }else if(self.player.rate == 1){
-           // NSLog(@"正在播放");
-            self.nextPlayTime = CMTimeGetSeconds(self.player.currentTime);
-           
+            NSLog(@"正在播放时间是%.2fs",self.currentPlayTime);
+            self.isOpenRecord = YES;
             
           
+        }
+        
+        
+        if(self.isOpenRecord == YES && self.player.rate == 0){
+            NSLog(@"正在暂停播放");
+            self.nextPlayTime = CMTimeGetSeconds(self.player.currentTime);
+            
+            self.AllTime = fabs(self.nextPlayTime - self.currentPlayTime);
+            self.AllTime2 += self.AllTime;
+            self.isOpenRecord = NO;
+            
             
         }
-    
-        
-        
-        
-        
         
     }];
 }
@@ -240,64 +241,6 @@
 
 
 
-
-
-
-
-
-
-
-- (void)addobserTOPlayItem:(AVPlayerItem *)playerItem{
-    //监听状态
-    [playerItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew || NSKeyValueChangeOldKey context:nil];
-    
-    [playerItem addObserver:self forKeyPath:@"rate" options:NSKeyValueObservingOptionNew context:nil];
-    
-
-}
-
-- (void)removeObserverFromPlayerItem:(AVPlayerItem *)playerItem{
-    [playerItem removeObserver:self forKeyPath:@"status"];
-}
-
--(void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSString *,id> *)change context:(void *)context{
-    
-    AVPlayerItem *playerItem = object;
-    if ([keyPath isEqualToString:@"status"]) {
-        AVPlayerStatus status = [[change objectForKey:@"new"] intValue];
-        if (status == AVPlayerStatusReadyToPlay) {
-            //
-           // NSLog(@"正在播放。。。视频长度%.2f",CMTimeGetSeconds(playerItem.duration));
-            
-            NSLog(@"播放的时间是%.2fs",CMTimeGetSeconds(playerItem.currentTime));
-            
-//            [self removeObserverFromPlayerItem:self.player.currentItem];
-//            
-//            [self addobserTOPlayItem:self.player.currentItem];
-            
-           // [self lookatcurrenttime];
-         
-        }
-        if (status == AVPlayerStatusUnknown){
-            NSLog(@"abababababab....");
-            
-        }
-        
-        
-        
-}
-    
-    
-    if ([keyPath isEqualToString:@"rate"]) {
-        
-        if (self.player.rate == 0) {
-            NSLog(@"stop");
-        }else if(self.player.rate == 1){
-            NSLog(@"start");
-        }
-    }
-
-}
 
 
 
